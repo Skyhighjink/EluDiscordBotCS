@@ -23,7 +23,7 @@ namespace EluDiscordBotCS.SQL
     }
 
     [ConnectionAspect]
-    public string GetPunishmentHistory(string nDiscordID)
+    public List<PunishmentObject> GetPunishmentHistory(string nDiscordID)
     { 
       List<PunishmentObject> punishmentHistory = new List<PunishmentObject>();
 
@@ -50,7 +50,7 @@ namespace EluDiscordBotCS.SQL
         }
       }
 
-      return ELUSqlUtil.FormatString(punishmentHistory);
+      return punishmentHistory;
     }
 
     [ConnectionAspect]
@@ -81,7 +81,11 @@ namespace EluDiscordBotCS.SQL
         { 
           while(reader.Read())
           { 
-            return $"{reader.GetString(reader.GetOrdinal("DiscordName"))}#{reader.GetInt32(reader.GetOrdinal("DiscordIdentifier")).ToString()}";
+            string discName = reader.GetString(reader.GetOrdinal("DiscordName"));
+            string discIdentifier = reader.GetInt32(reader.GetOrdinal("DiscordIdentifier")).ToString();
+            if(discIdentifier.Length < 4) discIdentifier = discIdentifier.PadLeft(4, '0');
+
+            return $"{discName}#{discIdentifier}";
           }
         }
       }

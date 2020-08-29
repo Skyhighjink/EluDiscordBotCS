@@ -12,9 +12,9 @@ namespace EluDiscordBotCS.EluObjects
     public string PunisherDiscordID { get; set; }
     public pAction Action { get; set; }
     public string Reason { get; set; }
-    public DateTime PunishmentDate { get; set; }
+    public DateTime? PunishmentDate { get; set; }
 
-    public PunishmentObject(string nPunishedDiscordID, string nPunisherDiscordID, pAction nAction, string nReason, DateTime nPunishmentDate)
+    public PunishmentObject(string nPunishedDiscordID, string nPunisherDiscordID, pAction nAction, string nReason, DateTime? nPunishmentDate)
     { 
       this.PunishedDiscordID = nPunishedDiscordID;
       this.PunisherDiscordID = nPunisherDiscordID;
