@@ -10,12 +10,19 @@ namespace EluDiscordBotCS.SQL.Util
   {
     public override void OnEntry(MethodExecutionArgs args)
     {
-      ((ELUSQLInterface)args.Instance).m_Conn.Open();
+      if(((ELUSQLInterface)args.Instance).m_Conn.State == System.Data.ConnectionState.Closed)
+        ((ELUSQLInterface)args.Instance).m_Conn.Open();
     }
 
     public override void OnExit(MethodExecutionArgs args)
     {
-      ((ELUSQLInterface)args.Instance).m_Conn.Close();
+      if (((ELUSQLInterface)args.Instance).m_Conn.State == System.Data.ConnectionState.Open)
+        ((ELUSQLInterface)args.Instance).m_Conn.Close();
+    }
+
+    public override void OnException(MethodExecutionArgs args)
+    {
+      OnExit(args);
     }
   }
 }

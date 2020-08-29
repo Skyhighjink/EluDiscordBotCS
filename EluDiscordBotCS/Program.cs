@@ -1,18 +1,72 @@
 ﻿using System;
+using System.Reflection;
+using System.Threading.Tasks;
+using Discord;
+using Discord.Commands;
+using Discord.WebSocket;
 using EluDiscordBotCS.SQL;
-using static EluDiscordBotCS.Enums.PunishmentEnum;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EluDiscordBotCS
 {
   class Program
   {
-    static void Main(string[] args)
+    protected internal ELUSQLInterface sql;
+    private DiscordSocketClient _client;
+    private CommandService _commands;
+    private IServiceProvider _services;
+
+    static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
+
+    public async Task MainAsync()
+    { 
+      sql = new ELUSQLInterface();
+
+      _client = new DiscordSocketClient();
+      _client.Log += Log;
+
+      _commands = new CommandService();
+      _services = new ServiceCollection()
+                      .AddSingleton(_client)
+                      .AddSingleton(_commands)
+                      .BuildServiceProvider();
+
+      string token = sql.GetConfigOptions("DiscordToken");
+
+      await CommandAsync();
+
+      await _client.LoginAsync(TokenType.Bot, token);
+      await _client.StartAsync();
+
+      await Task.Delay(-1);
+    }
+
+    public async Task CommandAsync()
     {
-      ELUSQLInterface sql = new ELUSQLInterface();
+      _client.MessageReceived += HandleCommandAsync;
+      await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+    }
 
-      Console.WriteLine(sql.GetPunishmentHistory("287637295962783745"));
+    private async Task HandleCommandAsync(SocketMessage msg)
+    {
+      SocketUserMessage message = msg as SocketUserMessage;
+      SocketCommandContext context = new SocketCommandContext(_client, message);
 
-      sql.RegisterPunishment("test2", "test3", (pAction)Enum.Parse(typeof(pAction), "KICK"), "Test1");
+      if (message.Author.IsBot) return;
+
+      int argPos = 0;
+      if (message.HasStringPrefix(sql.GetConfigOptions("DiscordPrefix"), ref argPos))
+      {
+        var result = await _commands.ExecuteAsync(context, argPos, _services);
+        if (!result.IsSuccess)
+          Console.WriteLine(result.ErrorReason);
+      }
+    }
+
+    private Task Log(LogMessage msg)
+    {
+      Console.WriteLine(msg.ToString());
+      return Task.CompletedTask;
     }
   }
 }

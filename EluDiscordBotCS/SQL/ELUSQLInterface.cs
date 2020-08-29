@@ -69,10 +69,72 @@ namespace EluDiscordBotCS.SQL
       }
     }
 
-    
+    [ConnectionAspect]
     public string RetrieveLastKnownName(string nDiscordID)
     { 
+      string cmdText = "SELECT TOP(1) * FROM [Last_Known_Name] WHERE [DiscordID] = @discordID";
+
+      using(SqlCommand cmd = new SqlCommand(cmdText, m_Conn))
+      { 
+        cmd.Parameters.AddWithValue("@discordID", nDiscordID);
+        using(SqlDataReader reader = cmd.ExecuteReader())
+        { 
+          while(reader.Read())
+          { 
+            return $"{reader.GetString(reader.GetOrdinal("DiscordName"))}#{reader.GetInt32(reader.GetOrdinal("DiscordIdentifier")).ToString()}";
+          }
+        }
+      }
       return "";
+    }
+
+    [ConnectionAspect]
+    public bool InsertIntoDatabase(string nDiscordID)
+    { 
+      string cmdTxt = "INSERT INTO [Last_Known_Name] ([DiscordID], [DiscordName], [DiscordIdentifier], [DateLeft]) VALUES (@discID, @discName, @discIdentifier, NULL)";
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
+      { 
+        cmd.Parameters.AddWithValue("@discID", nDiscordID);
+        cmd.Parameters.AddWithValue("@discName", nDiscordID);
+        cmd.Parameters.AddWithValue("@discIdentifier", 1234);
+
+        return cmd.ExecuteNonQuery() > 0;
+      }
+    }
+
+    [ConnectionAspect]
+    public void UpdateDatabaseUser(string nDiscordID)
+    { 
+      string cmdTxt = "UPDATE [Last_Known_Name] SET [DiscordName] = @discordName, [DiscordIdentifier] = @discIdentifier WHERE [DiscordID] = @discID";
+
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
+      { 
+        cmd.Parameters.AddWithValue("@discordName", "test");
+        cmd.Parameters.AddWithValue("@discIdentifier", 123);
+        cmd.Parameters.AddWithValue("@discID", nDiscordID);
+
+        if(cmd.ExecuteNonQuery() == 0)
+          InsertIntoDatabase(nDiscordID);
+      }
+    }
+
+    [ConnectionAspect]
+    public string GetConfigOptions(string nConfigName)
+    { 
+      string cmdTxt = "SELECT TOP(1) [ConfigValue] FROM [dbo].[Configuration] WHERE [ConfigName] = @confName";
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
+      { 
+        cmd.Parameters.AddWithValue("@confName", nConfigName);
+        using(SqlDataReader reader = cmd.ExecuteReader())
+        { 
+          while(reader.Read())
+          { 
+            string test = reader.GetString(0);
+            return reader.GetString(0);
+          }
+        }
+      }
+      return null;
     }
   }
 }
