@@ -1,6 +1,8 @@
 ﻿using Discord.WebSocket;
 using EluDiscordBotCS.EluObjects;
 using EluDiscordBotCS.Enums;
+using EluDiscordBotCS.SQL.Util;
+using PostSharp.Aspects;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -11,20 +13,20 @@ using static EluDiscordBotCS.Enums.PunishmentEnum;
 
 namespace EluDiscordBotCS.SQL
 {
-  public class ELUSQL
+  public class ELUSQLInterface
   {
-    private SqlConnection m_Conn;
+    protected internal SqlConnection m_Conn = new SqlConnection();
 
-    public ELUSQL()
+    public ELUSQLInterface()
     { 
       this.m_Conn = new SqlConnection(ConfigurationManager.AppSettings["DBConn"]);
     }
 
+    [ConnectionAspect]
     public string GetPunishmentHistory(string nDiscordID)
     { 
       List<PunishmentObject> punishmentHistory = new List<PunishmentObject>();
 
-      OpenConnection();
       string historyCmd = "SELECT TOP(5) * FROM [dbo].[Punishment] ";
       if (!string.IsNullOrEmpty(nDiscordID)) { historyCmd += "WHERE [PunishedDiscordID] = @discordID "; }
       historyCmd += "ORDER BY [PunishmentDate] DESC";
@@ -47,22 +49,30 @@ namespace EluDiscordBotCS.SQL
           }
         }
       }
-      CloseConnection();
 
-      return FormatString(punishmentHistory);
+      return ELUSqlUtil.FormatString(punishmentHistory);
     }
 
-    private string FormatString(List<PunishmentObject> nObjects)
+    [ConnectionAspect]
+    public void RegisterPunishment(string nDiscordID, string nPunisherDiscordID, pAction nAction, string nReason)
     { 
-      string toReturn = "";
-      foreach(PunishmentObject obj in nObjects)
-        toReturn += $"User: {obj.PunishedDiscordID}\nPunished By: {obj.PunisherDiscordID}\nAction {Enum.GetName(typeof(pAction), obj.Action)}\nDate: {obj.PunishmentDate.ToString()}\n\n";
+      string sqlCmd = "INSERT INTO [Punishment] ([PunishedDiscordID], [PunisherDiscordID], [Action], [Reason], [Duration], [PunishmentDate]) VALUES (@discID, @punisherDiscID, @action, @reason, 0, GETDATE())";
 
-      return toReturn;
+      using (SqlCommand cmd = new SqlCommand(sqlCmd, m_Conn))
+      {
+        cmd.Parameters.AddWithValue("@discID", nDiscordID);
+        cmd.Parameters.AddWithValue("@punisherDiscID", nPunisherDiscordID);
+        cmd.Parameters.AddWithValue("@action", Enum.GetName(typeof(pAction), nAction));
+        cmd.Parameters.AddWithValue("@reason", nReason);
+
+        cmd.ExecuteNonQuery();
+      }
     }
 
-    private void OpenConnection() { m_Conn.Open(); }
-
-    private void CloseConnection() { m_Conn.Close(); }
+    
+    public string RetrieveLastKnownName(string nDiscordID)
+    { 
+      return "";
+    }
   }
 }

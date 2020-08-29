@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace EluDiscordBotCS.Enums
@@ -16,17 +18,14 @@ namespace EluDiscordBotCS.Enums
 
     public static pAction GetAction(string nAction)
     { 
-      switch(nAction.ToLower())
-      {
-        case "kick":
-          return pAction.KICK;
-        case "ban":
-          return pAction.BAN;
-        case "mute":
-          return pAction.MUTE;
-        default:
-          return pAction.NA;
+      pAction toReturn = pAction.NA;
+      try 
+      { 
+        toReturn = (pAction)Enum.Parse(typeof(pAction), nAction, true); 
       }
+      catch(Exception){ }
+
+      return toReturn;
     }
   }
 }
