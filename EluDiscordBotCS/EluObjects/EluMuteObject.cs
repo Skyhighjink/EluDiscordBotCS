@@ -17,15 +17,17 @@ namespace EluDiscordBotCS.EluObjects
     internal protected static ELUSQLInterface sql = new ELUSQLInterface();
     private static SocketRole Muted = null;
     private static bool isRunning = false;
-    private static SemaphoreSlim semaphoreSlim = new SemaphoreSlim(1, 1);
+    internal protected static SemaphoreSlim semaphoreSlim = new SemaphoreSlim(1, 1);
 
     public static bool IsRunning() { return isRunning; }
 
     /* Start up / Main Mute thread*/
-    public static async Task ControlMuted(SocketGuild context)
+    public static async Task ControlMuted(SocketGuild context, Dictionary<SocketUser, DateTime> nStartupList)
     {
       Dictionary<SocketUser, long> currMuted = new Dictionary<SocketUser, long>();
       Muted = context.Roles.Where(x => x.Name.ToLower() == "mute" || x.Name.ToLower() == "muted").OrderByDescending(y => y.Position).First();
+
+      await GetMuted(nStartupList);
 
       Thread dictSortThread = new Thread(new ThreadStart(() =>
       {
@@ -50,6 +52,9 @@ namespace EluDiscordBotCS.EluObjects
           int time = 1000;
           if (CurrentMuted.Keys.Count() > 0)
             time = CurrentMuted.First().Value < time ? (int)CurrentMuted.First().Value : 1000;
+
+          if(time < 0)
+            time = 1;
 
           Thread.Sleep(time);
 
@@ -81,14 +86,6 @@ namespace EluDiscordBotCS.EluObjects
       await Task.Run(() =>
       {
         sql.AddMutedUser(nUser, nDuration, DateTime.Now);
-      });
-    }
-
-    private static async Task RemoveMute(SocketUser nUser)
-    {
-      await Task.Run(() =>
-      {
-        CurrentMuted.Remove(nUser);
       });
     }
 
@@ -154,6 +151,17 @@ namespace EluDiscordBotCS.EluObjects
             }
           }
         }
+      }
+    }
+
+    private static async Task GetMuted(Dictionary<SocketUser, DateTime> nList)
+    { 
+      foreach(SocketUser user in nList.Keys)
+      { 
+        TimeSpan span = nList[user] - DateTime.Now;
+        await Task.Run(() => { 
+          CurrentMuted.Add(user, long.Parse(Math.Ceiling(span.TotalMilliseconds).ToString()));
+        });
       }
     }
   }

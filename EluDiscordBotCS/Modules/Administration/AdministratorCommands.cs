@@ -125,6 +125,7 @@ namespace EluDiscordBotCS.Modules.Administration
       ELUSQLInterface sql = new ELUSQLInterface();
 
       await EluMuteObject.AddMuted(nUser, muteTime);
+      sql.RegisterPunishment(nUser.Id.ToString(), Context.User.Id.ToString(), PunishmentEnum.pAction.MUTE, reason);
       Console.WriteLine("Finished");
     }
   }

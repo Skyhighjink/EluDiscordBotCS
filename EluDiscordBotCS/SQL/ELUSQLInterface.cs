@@ -168,5 +168,25 @@ namespace EluDiscordBotCS.SQL
         cmd.ExecuteNonQuery();
       }
     }
+
+    [ConnectionAspect]
+    public Dictionary<string, DateTime> GetUnmuted()
+    { 
+      string cmdTxt = "SELECT * FROM [MutedLog] WHERE [IsUnmuted] = 0";
+
+      Dictionary<string, DateTime> toReturn = new Dictionary<string, DateTime>();
+
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
+      { 
+        using(SqlDataReader reader = cmd.ExecuteReader())
+        { 
+          while(reader.Read())
+          { 
+            toReturn.Add(reader.GetString(reader.GetOrdinal("MutedDiscordID")), reader.GetDateTime(reader.GetOrdinal("UnmuteTime")));
+          }
+        }
+        return toReturn;
+      }
+    }
   }
 }

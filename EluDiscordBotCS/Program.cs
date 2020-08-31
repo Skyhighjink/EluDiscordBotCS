@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -59,7 +61,17 @@ namespace EluDiscordBotCS
       {
         while(!_client.GetGuild(742727537188405328).IsSynced) { }
         SocketGuild guild = _client.GetGuild(742727537188405328);
-        await EluMuteObject.ControlMuted(guild);
+
+        Dictionary<string, DateTime> toMute = sql.GetUnmuted();
+
+        Dictionary<SocketUser, DateTime> toRemute = new Dictionary<SocketUser, DateTime>();
+
+        foreach(string userID in toMute.Keys.ToList())
+        { 
+          toRemute.Add(_client.GetUser(ulong.Parse(userID)), toMute[userID]);
+        }
+
+        await EluMuteObject.ControlMuted(guild, toRemute);
       }
     }
 
