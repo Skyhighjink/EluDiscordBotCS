@@ -89,13 +89,6 @@ namespace EluDiscordBotCS.Modules.Administration
     [Command("mute")]
     public async Task Mute(SocketGuildUser nUser, [Remainder] string args = null)
     { 
-      if(!EluMuteObject.IsRunning()) 
-      { 
-        Thread thread = new Thread(new ThreadStart(async () => await EluMuteObject.ControlMuted(Context)));
-        thread.IsBackground = true;
-        thread.Start();
-      }
-
       GuildPermissions perms = Context.Guild.GetUser(Context.User.Id).GuildPermissions;
 
       if(!perms.MuteMembers)
@@ -131,9 +124,8 @@ namespace EluDiscordBotCS.Modules.Administration
 
       ELUSQLInterface sql = new ELUSQLInterface();
 
-      await EluMuteObject.LogMuted(nUser, muteTime);
+      await EluMuteObject.AddMuted(nUser, muteTime);
       Console.WriteLine("Finished");
-      //await EluMuteObject.AddMuteObject(Context, nUser, muteTime);
     }
   }
 }

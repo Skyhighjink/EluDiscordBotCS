@@ -144,7 +144,7 @@ namespace EluDiscordBotCS.SQL
     [ConnectionAspect]
     public void AddMutedUser(SocketUser user, long time, DateTime timeMuted)
     { 
-      string cmdTxt = "INSERT INTO [dbo].[MutedLog] ([MutedDiscordID], [DateMuted], [UnmuteTime]) VALUES (@mutedID, @dateMuted, @unmute)";
+      string cmdTxt = "INSERT INTO [dbo].[MutedLog] ([MutedDiscordID], [DateMuted], [UnmuteTime], [IsUnmuted]) VALUES (@mutedID, @dateMuted, @unmute, 0)";
       DateTime unmuteDateTime = timeMuted.AddMilliseconds(time);
 
       using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
@@ -160,7 +160,13 @@ namespace EluDiscordBotCS.SQL
     [ConnectionAspect]
     public void LogUnmuted(SocketUser user)
     { 
-      
+      string cmdTxt = "UPDATE [MutedLog] SET [IsUnmuted] = 1 WHERE [MutedDiscordId] = @discID";
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
+      { 
+        cmd.Parameters.AddWithValue("@discID", user.Id.ToString());
+
+        cmd.ExecuteNonQuery();
+      }
     }
   }
 }

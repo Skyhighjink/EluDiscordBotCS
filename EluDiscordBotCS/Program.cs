@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
@@ -39,6 +40,8 @@ namespace EluDiscordBotCS
       await _client.LoginAsync(TokenType.Bot, token);
       await _client.StartAsync();
 
+      await StartUp();
+
       await Task.Delay(-1);
     }
 
@@ -48,10 +51,24 @@ namespace EluDiscordBotCS
       await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
     }
 
+    public async Task StartUp()
+    { 
+      while(_client.Guilds.Count < 1) { }
+
+      if (!EluMuteObject.IsRunning())
+      {
+        while(!_client.GetGuild(742727537188405328).IsSynced) { }
+        SocketGuild guild = _client.GetGuild(742727537188405328);
+        await EluMuteObject.ControlMuted(guild);
+      }
+    }
+
     private async Task HandleCommandAsync(SocketMessage msg)
     {
       SocketUserMessage message = msg as SocketUserMessage;
       SocketCommandContext context = new SocketCommandContext(_client, message);
+
+
 
       if (message.Author.IsBot) return;
 
