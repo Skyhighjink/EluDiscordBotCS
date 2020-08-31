@@ -9,6 +9,8 @@ using System.Net.NetworkInformation;
 using System.Security.Principal;
 using System.Text;
 using EluDiscordBotCS.EluObjects;
+using System.Globalization;
+using System.Dynamic;
 
 namespace EluDiscordBotCS.Modules
 {
@@ -64,7 +66,7 @@ namespace EluDiscordBotCS.Modules
       
       for(int x = 0; x < nObj.Count; x++)
       { 
-        embedMsg.AddField(name:$"Punishment {x + 1}", value: nObj[0].BuildHistoryCell(), inline: false);
+        embedMsg.AddField(name:$"Punishment {x + 1}", value: nObj[x].BuildHistoryCell(), inline: false);
       }
 
       return embedMsg.Build();
@@ -76,6 +78,43 @@ namespace EluDiscordBotCS.Modules
       string toReturn = $"User: {sql.RetrieveLastKnownName(nObj.PunishedDiscordID)}\nPunished By: {sql.RetrieveLastKnownName(nObj.PunisherDiscordID)}\n";
       toReturn += $"Action: {nObj.Action}\nReason: {nObj.Reason}\nDate Punished: {nObj.PunishmentDate.Value.ToString("dd-MM-yyyy hh:mm:ss")}";
 
+      return toReturn;
+    }
+
+    public static List<string> GetKickBanReason(string nContext)
+    { 
+      List<string> toReturn = new List<string>();
+      if(string.IsNullOrEmpty(nContext))
+      {
+          toReturn.Add("silent");
+          toReturn.Add("Probably something bad");
+          return toReturn;
+      }
+      string[] split = nContext.Split(' ');
+      if(split.Length > 0)
+      { 
+        if(split[0].ToLower() == "true")
+        { 
+          toReturn.Add("silent");
+          split = split.Skip(1).ToArray<string>();
+        }
+        else if(split[0].ToLower() == "false")
+        { 
+          toReturn.Add("notSilent");
+          split = split.Skip(1).ToArray<string>();
+        }
+        else
+        { 
+          toReturn.Add("silent");
+        }
+
+        toReturn.Add(string.Join(' ', split));
+
+        if(string.IsNullOrEmpty(toReturn[1]))
+        { 
+          toReturn[1] = "Probably something bad";
+        }
+      }
       return toReturn;
     }
   }

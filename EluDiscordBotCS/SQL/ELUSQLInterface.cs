@@ -140,5 +140,27 @@ namespace EluDiscordBotCS.SQL
       }
       return null;
     }
+
+    [ConnectionAspect]
+    public void AddMutedUser(SocketUser user, long time, DateTime timeMuted)
+    { 
+      string cmdTxt = "INSERT INTO [dbo].[MutedLog] ([MutedDiscordID], [DateMuted], [UnmuteTime]) VALUES (@mutedID, @dateMuted, @unmute)";
+      DateTime unmuteDateTime = timeMuted.AddMilliseconds(time);
+
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
+      { 
+        cmd.Parameters.AddWithValue("@mutedID", user.Id.ToString());
+        cmd.Parameters.AddWithValue("@dateMuted", timeMuted);
+        cmd.Parameters.AddWithValue("@unmute", unmuteDateTime);
+
+        cmd.ExecuteNonQuery();
+      }
+    }
+
+    [ConnectionAspect]
+    public void LogUnmuted(SocketUser user)
+    { 
+      
+    }
   }
 }
