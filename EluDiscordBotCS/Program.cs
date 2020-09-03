@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Discord;
@@ -28,6 +29,8 @@ namespace EluDiscordBotCS
 
       _client = new DiscordSocketClient();
       _client.Log += Log;
+      _client.UserJoined += RegisterUserJoin;
+      _client.ReactionAdded += ReactionAddedEvent;
 
       _commands = new CommandService();
       _services = new ServiceCollection()
@@ -45,6 +48,29 @@ namespace EluDiscordBotCS
       await StartUp();
 
       await Task.Delay(-1);
+    }
+
+    public async Task ReactionAddedEvent(Cacheable<IUserMessage, UInt64> message, ISocketMessageChannel channel, SocketReaction reaction)
+    { 
+      Console.WriteLine($"{message.Id} : {message.Value} : {reaction.UserId}");
+
+      if(reaction.UserId == _client.CurrentUser.Id)
+        return;
+
+      if(message.Id == ulong.Parse(sql.GetCurrentServerRuleMsg()))
+      { 
+        if(reaction.Emote == new Emoji("👍"))
+        { 
+          SocketGuild guild = _client.GetGuild(742727537188405328);
+          foreach(SocketRole role in guild.GetUser(reaction.UserId).Roles)
+          { 
+            if(role.Id == 735933111065378827)
+              return;
+          }
+
+          await guild.GetUser(reaction.UserId).AddRoleAsync(guild.GetRole(735933111065378827));
+        }
+      }
     }
 
     public async Task CommandAsync()
@@ -72,15 +98,70 @@ namespace EluDiscordBotCS
         }
 
         await EluMuteObject.ControlMuted(guild, toRemute);
+
+        List<SocketGuildUser> users = guild.Users.ToList();
+
+        SocketTextChannel channel = null;
+
+        foreach (SocketTextChannel chan in guild.TextChannels)
+        {
+          var messages = chan.GetMessagesAsync(50);
+
+          ulong msgId = ulong.Parse(sql.GetCurrentServerRuleMsg());
+
+          await foreach (var message in messages)
+          {
+            foreach (var msg in message)
+            {
+              if (msg.Id == msgId)
+              {
+                channel = chan;
+                break;
+              }
+            }
+          }
+        }
+
+        if(channel == null)
+          return;
+
+        foreach (SocketGuildUser user in users)
+        { 
+          if(user.IsBot || user.Roles.Where(x => x.Id == 735933111065378827).Count() > 0) 
+            continue;
+
+          IMessage msg = channel.GetMessageAsync(ulong.Parse(sql.GetCurrentServerRuleMsg())).Result;
+
+          var lst = msg.GetReactionUsersAsync(new Emoji("👍"), 5000000);
+
+          await foreach(var value in lst)
+          { 
+            foreach(var currUser in value)
+            { 
+              if(currUser.Id == user.Id)
+              { 
+                await guild.GetUser(user.Id).AddRoleAsync(guild.Roles.Where(x => x.Name.ToLower() == "travellers").First());
+              }
+            }
+          }
+        }
       }
     }
 
+    public async Task RegisterUserJoin(SocketGuildUser nUser)
+    { 
+      sql.UpdateDatabaseUser(nUser);
+
+      SocketGuild guild = nUser.Guild;
+      SocketGuildChannel welcomeChannel = guild.Channels.Where(x => x.Name.ToLower().Contains("welcome")).First();
+
+      await guild.GetTextChannel(guild.Channels.Where(x => x.Name.ToLower().Contains("welcome")).First().Id).SendMessageAsync($"Welcome <@{nUser.Id} to {guild.Name}!");
+    }
+
     private async Task HandleCommandAsync(SocketMessage msg)
-    {
+    { 
       SocketUserMessage message = msg as SocketUserMessage;
       SocketCommandContext context = new SocketCommandContext(_client, message);
-
-
 
       if (message.Author.IsBot) return;
 

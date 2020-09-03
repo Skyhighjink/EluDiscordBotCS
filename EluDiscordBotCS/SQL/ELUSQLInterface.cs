@@ -1,8 +1,10 @@
-﻿using Discord.WebSocket;
+﻿using Discord.Rest;
+using Discord.WebSocket;
 using EluDiscordBotCS.EluObjects;
 using EluDiscordBotCS.Enums;
 using EluDiscordBotCS.SQL.Util;
 using PostSharp.Aspects;
+using PostSharp.Extensibility;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -93,29 +95,29 @@ namespace EluDiscordBotCS.SQL
     }
 
     [ConnectionAspect]
-    public bool InsertIntoDatabase(string nDiscordID)
+    public bool InsertIntoDatabase(SocketGuildUser nDiscord)
     { 
       string cmdTxt = "INSERT INTO [Last_Known_Name] ([DiscordID], [DiscordName], [DiscordIdentifier], [DateLeft]) VALUES (@discID, @discName, @discIdentifier, NULL)";
       using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
       { 
-        cmd.Parameters.AddWithValue("@discID", nDiscordID);
-        cmd.Parameters.AddWithValue("@discName", nDiscordID);
-        cmd.Parameters.AddWithValue("@discIdentifier", 1234);
+        cmd.Parameters.AddWithValue("@discID", nDiscord.Id.ToString());
+        cmd.Parameters.AddWithValue("@discName", nDiscord.Username);
+        cmd.Parameters.AddWithValue("@discIdentifier", nDiscord.Discriminator);
 
         return cmd.ExecuteNonQuery() > 0;
       }
     }
 
     [ConnectionAspect]
-    public void UpdateDatabaseUser(string nDiscordID)
+    public void UpdateDatabaseUser(SocketGuildUser nDiscordID)
     { 
       string cmdTxt = "UPDATE [Last_Known_Name] SET [DiscordName] = @discordName, [DiscordIdentifier] = @discIdentifier WHERE [DiscordID] = @discID";
 
       using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
       { 
-        cmd.Parameters.AddWithValue("@discordName", "test");
-        cmd.Parameters.AddWithValue("@discIdentifier", 123);
-        cmd.Parameters.AddWithValue("@discID", nDiscordID);
+        cmd.Parameters.AddWithValue("@discordName", nDiscordID.Username);
+        cmd.Parameters.AddWithValue("@discIdentifier", nDiscordID.Discriminator);
+        cmd.Parameters.AddWithValue("@discID", nDiscordID.Id);
 
         if(cmd.ExecuteNonQuery() == 0)
           InsertIntoDatabase(nDiscordID);
@@ -187,6 +189,49 @@ namespace EluDiscordBotCS.SQL
         }
         return toReturn;
       }
+    }
+
+    [ConnectionAspect]
+    public void CurrentServerRule(RestUserMessage msg, SocketGuildUser user)
+    { 
+      string cmdTxt = "DELETE FROM [CurrRules]";
+
+      SqlTransaction transaction = m_Conn.BeginTransaction();
+
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn, transaction))
+      {
+        cmd.ExecuteNonQuery();
+      }
+
+      cmdTxt = "INSERT INTO [CurrRules] ([CurrentRuleMsgID], [Setter], [SetDate]) VALUES (@currRuleID, @setter, GETDATE())";
+
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn, transaction))
+      { 
+        cmd.Parameters.AddWithValue("@currRuleID", msg.Id.ToString());
+        cmd.Parameters.AddWithValue("@setter", user.Id.ToString());
+
+        Console.WriteLine(cmd.ExecuteNonQuery());
+      }
+      
+      transaction.Commit();
+    }
+
+    [ConnectionAspect]
+    public string GetCurrentServerRuleMsg()
+    { 
+      string cmdTxt = "SELECT TOP(1) FROM [CurrRules] ORDER BY [SetDate] DESC";
+
+      using(SqlCommand cmd = new SqlCommand(cmdTxt, m_Conn))
+      { 
+        using(SqlDataReader reader = cmd.ExecuteReader())
+        { 
+          while(reader.Read())
+          { 
+            return reader.GetString(reader.GetOrdinal("CurrentRuleMsgID"));
+          }
+        }
+      }
+      return null;
     }
   }
 }

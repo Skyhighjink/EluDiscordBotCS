@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using EluDiscordBotCS.EluObjects;
 using EluDiscordBotCS.Enums;
 using EluDiscordBotCS.SQL;
+using PostSharp.Extensibility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +15,11 @@ namespace EluDiscordBotCS.Modules.Administration
 {
   public class AdministratorCommands : ModuleBase<SocketCommandContext>
   {
+    private ELUSQLInterface sql = new ELUSQLInterface();
+
     [Command("history")]
     public async Task GetHistory(SocketGuildUser nUser)
     { 
-      ELUSQLInterface sql = new ELUSQLInterface();
       SocketGuildUser sender = Context.User as SocketGuildUser;
       if(!sender.GuildPermissions.ELUGetPermission(CommandUtil.PermissionType.STAFF)) { return; }
 
@@ -30,7 +32,6 @@ namespace EluDiscordBotCS.Modules.Administration
     [Command("history")]
     public async Task GetHistory([Remainder] string args = null)
     {
-      ELUSQLInterface sql = new ELUSQLInterface();
       SocketGuildUser sender = Context.User as SocketGuildUser;
       if (!sender.GuildPermissions.ELUGetPermission(CommandUtil.PermissionType.STAFF)) { return; }
 
@@ -109,7 +110,7 @@ namespace EluDiscordBotCS.Modules.Administration
         // return;
         //}
       }
-      catch(Exception ex)
+      catch(Exception)
       { 
         await ReplyAsync("Please enter a valid time");
         return;
@@ -127,6 +128,63 @@ namespace EluDiscordBotCS.Modules.Administration
       await EluMuteObject.AddMuted(nUser, muteTime);
       sql.RegisterPunishment(nUser.Id.ToString(), Context.User.Id.ToString(), PunishmentEnum.pAction.MUTE, reason);
       Console.WriteLine("Finished");
+    }
+
+    [Command("purge")]
+    public async Task PurgeChat(int args)
+    {
+      GuildPermissions perms = Context.Guild.GetUser(Context.User.Id).GuildPermissions;
+
+      if(!perms.Administrator && !perms.BanMembers && !perms.ManageChannels && !perms.ManageMessages && !perms.ManageRoles && Context.Guild.OwnerId != Context.User.Id)
+        return;
+
+      await ReplyAsync("Purge in Progress, please wait.");
+
+      var channel = Context.Guild.GetChannel(Context.Channel.Id) as ITextChannel;
+
+      int channelSlowMode = channel.SlowModeInterval;
+
+      await channel.ModifyAsync(x => {
+        x.SlowModeInterval = 500;
+      });
+
+      var messages = await Context.Channel.GetMessagesAsync(Context.Message, Direction.Before, args).FlattenAsync();
+
+      var filtedMsg = messages.Where(x => (DateTimeOffset.Now - x.Timestamp).TotalDays <= 14);
+
+      if(filtedMsg.Count() < 1)
+      { 
+        await ReplyAsync("No messages past 14 days can be deleted. Therefore no messages will be deleted.");
+        return;
+      }
+
+      await channel.DeleteMessagesAsync(filtedMsg);
+      await ReplyAsync("Messages deleted");
+
+      await channel.ModifyAsync(x => {
+        x.SlowModeInterval = channelSlowMode;
+      });
+    }
+
+    [Command("rules")]
+    public async Task ApplyRules([Remainder] string args)
+    { 
+      GuildPermissions perms = Context.Guild.GetUser(Context.User.Id).GuildPermissions;
+
+      if(!perms.Administrator)
+        return;
+
+      await Context.Channel.DeleteMessageAsync(Context.Message);
+
+      Embed embedMsg = CommandUtil.BuildRules(args);
+
+      var message = await Context.Channel.SendMessageAsync(embed: embedMsg);
+
+      Emoji myEmoji = new Emoji("👍");
+
+      await message.AddReactionAsync(myEmoji);
+
+      sql.CurrentServerRule(message, Context.Guild.GetUser(Context.User.Id));
     }
   }
 }

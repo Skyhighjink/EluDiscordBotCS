@@ -72,6 +72,16 @@ namespace EluDiscordBotCS.Modules
       return embedMsg.Build();
     }
 
+    public static Embed BuildRules(string ToPutOnRules)
+    {
+      EmbedBuilder embed = new EmbedBuilder();
+      embed.Color = Color.Blue;
+      embed.Title = "Rules";
+      embed.Description = ToPutOnRules;
+
+      return embed.Build();
+    }
+
     public static string BuildHistoryCell(this PunishmentObject nObj)
     {
       ELUSQLInterface sql = new ELUSQLInterface();

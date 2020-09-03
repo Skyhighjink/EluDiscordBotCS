@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# CS0728: Possibly incorrect assignment to local which is the argument to a using or lock statement
+dotnet_diagnostic.CS0728.severity = silent
